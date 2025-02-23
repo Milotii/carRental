@@ -90,9 +90,9 @@ Example: `localhost:3000/rental-cars?number_of_seats=5`
 
 2. Test the endpoints:
 
-- Register a user (POST `/register`).
+- Register a user (**POST** `/register`).
 
-- Login (POST `/login`) and copy the JWT token.
+- Login (**POST** `/login`) and copy the JWT token.
 
-- Use the token to access protected endpoints (GET `/my-profile`).
+- Use the token to access protected endpoints (**GET** `/my-profile`).
 

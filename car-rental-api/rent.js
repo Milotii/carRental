@@ -2,6 +2,7 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = 3000;
@@ -9,6 +10,7 @@ const port = 3000;
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());
+const saltRounds = 10;
 
 // MongoDB connection
 const uri = 'mongodb://localhost:27017';
@@ -41,10 +43,12 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Extract token from "Bearer <token>"
 
-  if (!token) return res.status(401).json({ message: 'Access denied. No token provided.' });
+  if (!token) 
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Invalid or expired token.' });
+    if (err) 
+      return res.status(403).json({ message: 'Invalid or expired token.' });
     req.user = user; // Attach the user payload to the request object
     next();
   });
@@ -58,7 +62,15 @@ app.post('/register', async (req, res) => {
     }
 
     try {
-        const user = { fullName, email, username, password };
+      // hash the password
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
+        const user = { 
+          fullName, 
+          email,
+          username, 
+          password: hashedPassword
+        };
         const result = await db.collection('users').insertOne(user);
         res.status(201).json({ message: 'User registered successfully', userId: result.insertedId });
     } catch (err) {
@@ -74,13 +86,17 @@ app.post('/login', async (req, res) => {
     }
 
     try {
-        const user = await db.collection('users').findOne({ username, password });
+        const user = await db.collection('users').findOne({ username });
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid username or password' });
         }
+        // Compare the provided password with the hashed password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) return res.status(401).json({ message: 'Invalid username or password.' });
 
-        const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ username: user.username },
+        process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ message: 'Login successful', token });
   } catch (err) {
     res.status(500).json({ message: 'Failed to login', error: err.message });
@@ -115,7 +131,7 @@ app.get('/rental-cars', async (req, res) => {
         if (number_of_seats) filter.number_of_seats = parseInt(number_of_seats);
 
 
-        const cars = await db.collection('cars').find(filter).sort({ price_per_day: 1 }).toArray();
+        const cars = await db.collection('cars').find(filter).sort({ price_per_day: 1 }).toArray(); // (1) Ascending order (lowest to highest)
         res.status(200).json(cars);
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch cars', error: err.message });

@@ -24,7 +24,7 @@ This is a simple REST API for managing car rentals, built with **Node.js**, **Ex
   Run `npm install`.
 
 - Start the server:  
-  Run `node rent.js`.
+  Run `nodemon rent.js`.
 
 The server will start at `http://localhost:3000`
 
